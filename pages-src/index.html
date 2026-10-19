@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="es">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <title>Sanavera Retro</title>
+    <meta
+      name="description"
+      content="Sanavera Retro: catálogo de Internet Archive para jugar NES, Mega Drive, Master System, SNES y arcade en el navegador."
+    />
+    <meta name="theme-color" content="#100e0b" />
+    <link rel="icon" href="./favicon.svg" type="image/svg+xml" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link
+      rel="stylesheet"
+      href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,560&family=Outfit:wght@400;500;600&display=swap"
+    />
+    <style>
+      :root {
+        color-scheme: dark;
+        --bg: #100e0b;
+        --surface: #2a241c;
+        --fg: #f4efe4;
+        --muted: #b3a794;
+        --accent: #f0a202;
+        --line: color-mix(in srgb, var(--fg) 22%, transparent);
+        font-family: Outfit, ui-sans-serif, system-ui, sans-serif;
+      }
+      * { box-sizing: border-box; }
+      html, body { margin: 0; height: 100%; background: var(--bg); color: var(--fg); }
+      body { overflow: hidden; }
+      main { max-width: 64rem; height: 100dvh; margin: 0 auto; display: flex; flex-direction: column; }
+      header { padding: 1.25rem 1rem 0.75rem; }
+      .brand { display: flex; align-items: center; gap: 0.75rem; }
+      .brand img { width: 3.5rem; height: 3.5rem; border-radius: 1rem; border: 1px solid var(--line); object-fit: cover; }
+      h1 { margin: 0; font-family: Fraunces, ui-serif, Georgia, serif; font-size: 1.7rem; font-weight: 560; letter-spacing: -0.02em; }
+      .eyebrow { margin: 0.25rem 0 0; color: var(--accent); font-size: 0.68rem; font-weight: 600; letter-spacing: 0.18em; text-transform: uppercase; }
+      .lead { max-width: 28rem; margin: 0.75rem 0 0; color: var(--muted); font-size: 0.92rem; line-height: 1.45; }
+      .search { display: flex; align-items: center; gap: 0.5rem; margin-top: 1rem; padding: 0.55rem 0.8rem; border: 1px solid var(--line); border-radius: 999px; background: var(--surface); }
+      .search input { width: 100%; border: 0; background: transparent; color: var(--fg); font: inherit; font-size: 1rem; outline: none; }
+      .search input:disabled { opacity: 0.5; }
+      .tabs { display: flex; gap: 0.5rem; margin-top: 0.75rem; overflow-x: auto; padding-bottom: 0.25rem; }
+      .tabs a, button { font: inherit; cursor: pointer; }
+      .tabs a {
+        flex: 0 0 auto;
+        border: 1px solid var(--line);
+        border-radius: 999px;
+        background: var(--surface);
+        color: var(--fg);
+        padding: 0.5rem 0.75rem;
+        font-size: 0.9rem;
+        font-weight: 500;
+        text-decoration: none;
+      }
+      .tabs a.on { background: var(--accent); border-color: var(--accent); color: var(--bg); }
+      .note { margin: 0.5rem 0 0; color: var(--muted); font-size: 0.75rem; line-height: 1.4; }
+      section { min-height: 0; flex: 1; overflow-y: auto; padding: 0 1rem 2rem; }
+      .grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0.75rem; margin: 0; padding: 0; list-style: none; }
+      @media (min-width: 640px) { .grid { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+      @media (min-width: 1024px) { .grid { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
+      .card { position: relative; }
+      .open {
+        display: block; width: 100%; overflow: hidden; border: 1px solid var(--line); border-radius: 1rem;
+        background: var(--surface); color: inherit; text-align: left; padding: 0;
+      }
+      .cover { display: block; aspect-ratio: 4 / 3; background: color-mix(in srgb, var(--fg) 10%, var(--surface)); }
+      .cover img { width: 100%; height: 100%; object-fit: cover; }
+      .meta { display: block; padding: 0.55rem 0.75rem 0.7rem; }
+      .title { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; font-size: 0.92rem; font-weight: 500; }
+      .year { display: block; margin-top: 0.25rem; color: var(--muted); font-size: 0.75rem; }
+      .fav {
+        position: absolute; top: 0.45rem; right: 0.45rem; width: 2.75rem; height: 2.75rem;
+        border: 0; border-radius: 999px; background: color-mix(in srgb, var(--bg) 80%, transparent); color: var(--fg);
+      }
+      .fav.on { color: var(--accent); }
+      .status, .empty { color: var(--muted); text-align: center; font-size: 0.9rem; }
+      .error { color: var(--accent); font-size: 0.9rem; }
+      .more {
+        display: block; margin: 1rem auto 0; border: 0; border-radius: 999px; background: var(--surface);
+        color: var(--fg); padding: 0.75rem 1.25rem; font-weight: 500;
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <header>
+        <div class="brand">
+          <img src="./logo.jpg" alt="" />
+          <div>
+            <h1>Sanavera Retro</h1>
+            <p class="eyebrow">Sala de juegos</p>
+          </div>
+        </div>
+        <p class="lead">El catálogo de Internet Archive. La pantalla arriba, el joystick abajo.</p>
+        <label class="search">
+          <input id="q" type="search" placeholder="Buscar" autocomplete="off" />
+        </label>
+        <nav id="tabs" class="tabs" aria-label="Consolas"></nav>
+        <p id="note" class="note" hidden></p>
+      </header>
+      <section>
+        <p id="error" class="error" hidden></p>
+        <p id="empty" class="empty" hidden></p>
+        <ul id="grid" class="grid"></ul>
+        <p id="status" class="status" hidden>Cargando el estante</p>
+        <button id="more" class="more" type="button" hidden>Cargar más</button>
+      </section>
+    </main>
+    <script type="module" src="./shelf.js"></script>
+  </body>
+</html>

@@ -1,0 +1,40 @@
+{
+  "url": "http://127.0.0.1:8081/",
+  "viewports": {
+    "desktop": {
+      "width": 1280,
+      "height": 800,
+      "status": 200,
+      "title": "Vitrina",
+      "hasCanvas": false,
+      "bodyTextLen": 1040,
+      "bodyTextHash": "b81c48321983574ec51864035b7e0ca973517848c74456ba25ab5ac5ce07f49e",
+      "bodyTextPrefix": "Vitrina El catálogo de Internet Archive. La pantalla arriba, el ",
+      "horizontalOverflow": false,
+      "consoleErrors": [],
+      "pageErrors": [],
+      "screenshot": "/workspace/screenshots/app-builder-built.png"
+    },
+    "mobile": {
+      "width": 390,
+      "height": 844,
+      "status": 200,
+      "title": "Vitrina",
+      "hasCanvas": false,
+      "bodyTextLen": 150,
+      "bodyTextHash": "52f19c9646041575903c6a6bb0a64e9762fea75ca95d3a7c5d6b31b94e995ff7",
+      "bodyTextPrefix": "Vitrina El catálogo de Internet Archive. La pantalla arriba, el ",
+      "horizontalOverflow": false,
+      "consoleErrors": [],
+      "pageErrors": [],
+      "screenshot": "/workspace/screenshots/app-builder-built-mobile.png"
+    }
+  },
+  "brandWarnings": [],
+  "authWarnings": [],
+  "verdictFile": "/workspace/screenshots/app-builder-built.json",
+  "divergesFromBaseline": true,
+  "baselineReasons": [
+    "desktop: body text changed (150 -> 1040 chars, hash mismatch)"
+  ]
+}
