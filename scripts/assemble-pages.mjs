@@ -1,4 +1,4 @@
-import { copyFileSync, existsSync, mkdirSync, renameSync, rmSync, writeFileSync } from "node:fs";
+import { copyFileSync, existsSync, mkdirSync, readFileSync, renameSync, rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 
 const root = process.cwd();
@@ -6,12 +6,16 @@ const out = join(root, "pages-dist");
 mkdirSync(out, { recursive: true });
 
 // Vite puts the entry HTML under pages-dist/pages-src/ because the input is pages-src/index.html.
-// Move it to the root of pages-dist so the site is served correctly on GitHub Pages.
+// Move it to the root of pages-dist and fix relative asset paths (../assets -> ./assets).
 const nestedIndex = join(out, "pages-src", "index.html");
 const rootIndex = join(out, "index.html");
 if (existsSync(nestedIndex)) {
-  renameSync(nestedIndex, rootIndex);
-  // Clean up the empty pages-src folder if possible
+  let html = readFileSync(nestedIndex, "utf8");
+  // Vite emits paths relative to pages-src/, e.g. ../assets/index-xxxx.js
+  html = html.replaceAll("../assets/", "./assets/");
+  html = html.replaceAll('src="../', 'src="./");
+  html = html.replaceAll("href=\"../", "href=\"./");
+  writeFileSync(rootIndex, html);
   try {
     rmSync(join(out, "pages-src"), { recursive: true, force: true });
   } catch {
