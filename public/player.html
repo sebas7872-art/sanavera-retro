@@ -60,11 +60,23 @@ var rom=q.get("url")||"";
 var core=q.get("core")||"nes";
 var sys=q.get("sys")||"nes";
 var back=q.get("back")||"/";
+try{
+  if(!rom){rom=sessionStorage.getItem("sanavera.rom")||"";if(rom)sessionStorage.removeItem("sanavera.rom");}
+  if(!q.get("core")&&sessionStorage.getItem("sanavera.core"))core=sessionStorage.getItem("sanavera.core")||core;
+  if(!q.get("sys")&&sessionStorage.getItem("sanavera.sys"))sys=sessionStorage.getItem("sanavera.sys")||sys;
+}catch(e){}
 if(back.indexOf("://")!==-1||back.startsWith("//")||!/^[a-zA-Z0-9._~/?=&%+-]+$/.test(back))back="/";
 document.getElementById("back").setAttribute("href",back);
 var hint=document.getElementById("hint");
 function say(text){hint.hidden=!text;hint.textContent=text||"";}
-if(rom.indexOf("https://cors.archive.org/cors/")!==0){say("Ese archivo no viene de Internet Archive.");return;}
+var okSrc=
+  rom.indexOf("https://cors.archive.org/cors/")===0||
+  rom.indexOf("blob:")===0||
+  rom.indexOf("https://")===0||
+  rom.indexOf("http://")===0;
+if(!rom||!okSrc){say("No hay un archivo o URL válida para cargar.");return;}
+if(rom.indexOf("blob:")===0){say("Cargando archivo local…");}
+else if(rom.indexOf("https://")===0&&rom.indexOf("cors.archive.org")===-1){say("Cargando URL… Si falla, el servidor debe permitir CORS.");}
 var pads={
 nes:{dpad:true,meta:[{label:"Select",index:2},{label:"Start",index:3}],faces:"nes",face:[{label:"B Turbo",index:0,turbo:true},{label:"A Turbo",index:8,turbo:true},{label:"B",index:0},{label:"A",index:8},{label:"A+B",indices:[0,8],combo:true}]},
 sms:{dpad:true,meta:[{label:"Pausa",index:3}],faces:"pair",face:[{label:"1",index:0,slot:"b"},{label:"2",index:8,slot:"a"}]},
