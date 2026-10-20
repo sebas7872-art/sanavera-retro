@@ -31,13 +31,14 @@ function readFavs() {
 let favs = readFavs();
 
 function esc(value) {
-  return String(value).replace(/[&<>"']/g, (char) => ({
+  const map = {
     "&": "&",
     "<": "<",
     ">": ">",
     '"': """,
     "'": "&#39;"
-  }[char]));
+  };
+  return String(value).replace(/[&<>"']/g, (char) => map[char]);
 }
 
 function href(sys, fav) {
