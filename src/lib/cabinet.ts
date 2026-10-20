@@ -1,6 +1,6 @@
-export type SystemId = "arcade" | "nes" | "md" | "sms" | "snes";
+export type SystemId = "arcade" | "nes" | "md" | "sms" | "snes" | "ps1";
 
-export type PadId = "arcade" | "nes" | "md" | "snes";
+export type PadId = "arcade" | "nes" | "md" | "snes" | "ps1";
 
 export type SystemDef = {
   id: SystemId;
@@ -55,6 +55,15 @@ export const SYSTEMS: SystemDef[] = [
     query: "collection:consolelivingroom AND emulator:snes AND mediatype:software",
     exts: [".sfc", ".smc", ".zip"],
   },
+  {
+    id: "ps1",
+    label: "PlayStation",
+    core: "psx",
+    pad: "ps1",
+    query: "collection:psx-homebrew-library AND mediatype:software",
+    exts: [".chd", ".pbp", ".cue", ".bin", ".iso", ".img", ".toc", ".ccd", ".m3u", ".zip"],
+    note: "Homebrew y demos de PS1. Los archivos suelen ser grandes y tardan en cargar. Usa BIOS HLE (sin BIOS propietaria).",
+  },
 ];
 
 const GENERIC_HINTS = new Set([
@@ -67,6 +76,9 @@ const GENERIC_HINTS = new Set([
   "arcade",
   "mame",
   "sega",
+  "psx",
+  "ps1",
+  "playstation",
 ]);
 
 export function getSystem(id: string | undefined): SystemDef {
@@ -88,7 +100,7 @@ export type ArchiveFile = {
 type Ranked = { file: ArchiveFile; score: number };
 
 const SKIP =
-  /screenshot|thumb|cover|manual|flyer|__ia|torrent|\.xml$|\.sqlite$|\.pdf$|\.txt$|\.jpg$|\.jpeg$|\.png$|\.gif$|\.mp4$|\.ia\./i;
+  /screenshot|thumb|cover|manual|flyer|__ia|torrent|\.xml$|\.sqlite$|\.pdf$|\.txt$|\.jpg$|\.jpeg$|\.png$|\.gif$|\.mp4$|\.ia\.|source|src\.|_source/i;
 
 export function pickRom(files: ArchiveFile[], exts: string[], hint?: string): ArchiveFile | null {
   const cleanHint = (hint || "").toLowerCase().trim();
@@ -107,8 +119,13 @@ export function pickRom(files: ArchiveFile[], exts: string[], hint?: string): Ar
     if (useHint && base === `${cleanHint}.zip`) score += 120;
     else if (useHint && base.startsWith(cleanHint)) score += 60;
     if (lower.includes("/")) score -= 8;
-    if (size > 60_000_000) score -= 80;
-    if (Number.isFinite(size)) score += Math.min(size / 200_000, 15);
+    // Prefer compact single-file formats for browser play
+    if (lower.endsWith(".chd") || lower.endsWith(".pbp") || lower.endsWith(".iso")) score += 25;
+    if (lower.endsWith(".cue")) score += 15;
+    // Soft penalty only for multi-gigabyte dumps (PS1 homebrew can be 50–400 MB)
+    if (size > 900_000_000) score -= 80;
+    else if (size > 400_000_000) score -= 20;
+    if (Number.isFinite(size) && size > 0) score += Math.min(size / 5_000_000, 12);
     ranked.push({ file, score });
   }
 
@@ -149,7 +166,7 @@ export async function searchShelf(system: SystemDef, text: string, page: number)
   const title = phrase(text);
   const query = title
     ? `${system.query} AND ${title}`
-    : `${system.query} AND downloads:[40 TO *]`;
+    : `${system.query} AND downloads:[5 TO *]`;
   const params = new URLSearchParams({
     q: query,
     rows: "24",
@@ -177,7 +194,7 @@ export async function searchShelf(system: SystemDef, text: string, page: number)
   return { games, more: start + docs.length < found };
 }
 
-export async function resolvePlayable(id: string, system: SystemDef): Promise<{ url: string; file: string }> {
+export async function resolvePlayable(id: string, system: SystemDef): Promise<{ url: string; file: string; size?: number }> {
   const response = await fetch(`https://archive.org/metadata/${encodeURIComponent(id)}`);
   if (!response.ok) throw new Error("No pude leer ese ítem.");
   const data = (await response.json()) as {
@@ -187,5 +204,6 @@ export async function resolvePlayable(id: string, system: SystemDef): Promise<{ 
   const hint = asText(data.metadata?.emulator);
   const file = pickRom(data.files ?? [], system.exts, hint);
   if (!file?.name) throw new Error("Ese ítem no tiene un archivo jugable.");
-  return { url: romUrl(id, file.name), file: file.name };
+  const size = Number(file.size || 0);
+  return { url: romUrl(id, file.name), file: file.name, size: Number.isFinite(size) ? size : undefined };
 }
