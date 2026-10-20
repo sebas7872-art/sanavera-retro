@@ -12,6 +12,74 @@ export type SystemDef = {
   note?: string;
 };
 
+/**
+ * Curated PS1 titles with an explicit Archive.org file path.
+ * Prefer individual games with single-file disc images (ISO/CHD/PBP).
+ * Collections, BIOS dumpers, tools and untested multi-track dumps are excluded.
+ */
+export type Ps1Entry = {
+  id: string;
+  title: string;
+  year: string;
+  file: string;
+  /** Optional short note shown only in code comments / future UI */
+  kind?: "iso" | "zip";
+};
+
+export const PS1_VERIFIED: Ps1Entry[] = [
+  {
+    id: "doukutsu_test5_2",
+    title: "DoukutsuPSX (Cave Story port)",
+    year: "2021",
+    file: "doukutsu_test5_2.iso",
+    kind: "iso",
+  },
+  {
+    id: "dark-souls",
+    title: "Dark Souls (homebrew)",
+    year: "2010",
+    file: "DarkSouls.iso",
+    kind: "iso",
+  },
+  {
+    id: "fromage-0.93e",
+    title: "Fromage",
+    year: "2021",
+    file: "fromage-0.93e.zip",
+    kind: "zip",
+  },
+  {
+    id: "Yarmico2",
+    title: "Yarmico 2",
+    year: "2022",
+    file: "yarmico2.zip",
+    kind: "zip",
+  },
+  {
+    id: "psx_rocksngems",
+    title: "Rocks'n'Gems",
+    year: "1994",
+    file: "psx_rocksngems.zip",
+    kind: "zip",
+  },
+  {
+    id: "hover_202203",
+    title: "Hover Racing (Net Yaroze)",
+    year: "1997",
+    file: "HOVER120.zip",
+    kind: "zip",
+  },
+  {
+    id: "nu-pogodi-11",
+    title: "Nu, Pogodi! 11",
+    year: "2021",
+    file: "NuPogodi_11.zip",
+    kind: "zip",
+  },
+];
+
+const PS1_BY_ID = new Map(PS1_VERIFIED.map((entry) => [entry.id, entry]));
+
 export const SYSTEMS: SystemDef[] = [
   {
     id: "arcade",
@@ -60,9 +128,10 @@ export const SYSTEMS: SystemDef[] = [
     label: "PlayStation",
     core: "psx",
     pad: "ps1",
+    // Curated list only — query unused for searchShelf when id is ps1
     query: "collection:psx-homebrew-library AND mediatype:software",
-    exts: [".chd", ".pbp", ".cue", ".bin", ".iso", ".img", ".toc", ".ccd", ".m3u", ".zip"],
-    note: "Homebrew y demos de PS1. Los archivos suelen ser grandes y tardan en cargar. Usa BIOS HLE (sin BIOS propietaria).",
+    exts: [".iso", ".chd", ".pbp", ".bin", ".cue", ".img", ".zip"],
+    note: "Catálogo curado de homebrew/demos individuales. Preferí los ISO; algunos ZIP pueden tardar o no arrancar según el emulador.",
   },
 ];
 
@@ -100,7 +169,10 @@ export type ArchiveFile = {
 type Ranked = { file: ArchiveFile; score: number };
 
 const SKIP =
-  /screenshot|thumb|cover|manual|flyer|__ia|torrent|\.xml$|\.sqlite$|\.pdf$|\.txt$|\.jpg$|\.jpeg$|\.png$|\.gif$|\.mp4$|\.ia\.|source|src\.|_source/i;
+  /screenshot|thumb|cover|manual|flyer|__ia|torrent|\.xml$|\.sqlite$|\.pdf$|\.txt$|\.jpg$|\.jpeg$|\.png$|\.gif$|\.mp4$|\.ia\.|source|src\.|_source|bios/i;
+
+const BAD_PS1_TITLE =
+  /\b(collection|compil|bios|dumper|boot\s*cd|hacker\s*kit|music\s*disk|sdk|trainer|test\s*suite|emulator|graphics\s*demo|net\s*yaroze\s*collection|\d+\s*in\s*1|import\s*player|tool)\b/i;
 
 export function pickRom(files: ArchiveFile[], exts: string[], hint?: string): ArchiveFile | null {
   const cleanHint = (hint || "").toLowerCase().trim();
@@ -109,7 +181,7 @@ export function pickRom(files: ArchiveFile[], exts: string[], hint?: string): Ar
 
   for (const file of files) {
     const name = (file.name || "").trim();
-    if (!name || SKIP.test(name) || /bios/i.test(name)) continue;
+    if (!name || SKIP.test(name)) continue;
     const lower = name.toLowerCase();
     const extIndex = exts.findIndex((ext) => lower.endsWith(ext));
     if (extIndex < 0) continue;
@@ -119,10 +191,11 @@ export function pickRom(files: ArchiveFile[], exts: string[], hint?: string): Ar
     if (useHint && base === `${cleanHint}.zip`) score += 120;
     else if (useHint && base.startsWith(cleanHint)) score += 60;
     if (lower.includes("/")) score -= 8;
-    // Prefer compact single-file formats for browser play
-    if (lower.endsWith(".chd") || lower.endsWith(".pbp") || lower.endsWith(".iso")) score += 25;
-    if (lower.endsWith(".cue")) score += 15;
-    // Soft penalty only for multi-gigabyte dumps (PS1 homebrew can be 50–400 MB)
+    if (lower.endsWith(".chd") || lower.endsWith(".pbp") || lower.endsWith(".iso")) score += 40;
+    if (lower.endsWith(".cue")) score -= 30; // never pick cue alone
+    if (lower.endsWith(".bin") && files.some((f) => (f.name || "").toLowerCase().endsWith(".cue"))) {
+      score -= 15; // multi-track sets are unreliable in browser
+    }
     if (size > 900_000_000) score -= 80;
     else if (size > 400_000_000) score -= 20;
     if (Number.isFinite(size) && size > 0) score += Math.min(size / 5_000_000, 12);
@@ -159,14 +232,34 @@ function phrase(raw: string): string {
   return `title:("${clean}")`;
 }
 
+function searchPs1Curated(text: string, page: number): { games: GameDoc[]; more: boolean } {
+  const needle = text.trim().toLowerCase();
+  const filtered = PS1_VERIFIED.filter((entry) => {
+    if (BAD_PS1_TITLE.test(entry.title)) return false;
+    if (!needle) return true;
+    return entry.title.toLowerCase().includes(needle) || entry.id.toLowerCase().includes(needle);
+  });
+  const rows = 24;
+  const start = Math.max(0, (page - 1) * rows);
+  const slice = filtered.slice(start, start + rows);
+  return {
+    games: slice.map((entry) => ({ id: entry.id, title: entry.title, year: entry.year })),
+    more: start + slice.length < filtered.length,
+  };
+}
+
 export async function searchShelf(system: SystemDef, text: string, page: number): Promise<{
   games: GameDoc[];
   more: boolean;
 }> {
+  if (system.id === "ps1") {
+    return searchPs1Curated(text, page);
+  }
+
   const title = phrase(text);
   const query = title
     ? `${system.query} AND ${title}`
-    : `${system.query} AND downloads:[5 TO *]`;
+    : `${system.query} AND downloads:[40 TO *]`;
   const params = new URLSearchParams({
     q: query,
     rows: "24",
@@ -195,6 +288,31 @@ export async function searchShelf(system: SystemDef, text: string, page: number)
 }
 
 export async function resolvePlayable(id: string, system: SystemDef): Promise<{ url: string; file: string; size?: number }> {
+  // PS1: only curated entries with an explicit file path
+  if (system.id === "ps1") {
+    const entry = PS1_BY_ID.get(id);
+    if (!entry) {
+      throw new Error("Ese título no está en el catálogo verificado de PlayStation.");
+    }
+    const response = await fetch(`https://archive.org/metadata/${encodeURIComponent(id)}`);
+    if (!response.ok) throw new Error("No pude leer ese ítem en Internet Archive.");
+    const data = (await response.json()) as { files?: ArchiveFile[] };
+    const files = data.files ?? [];
+    const match = files.find((f) => (f.name || "") === entry.file);
+    if (!match?.name) {
+      throw new Error("El archivo verificado ya no está disponible en Archive.");
+    }
+    const size = Number(match.size || 0);
+    if (Number.isFinite(size) && size > 0 && size < 64_000) {
+      throw new Error("El archivo es demasiado pequeño para ser un juego de PS1.");
+    }
+    return {
+      url: romUrl(id, match.name),
+      file: match.name,
+      size: Number.isFinite(size) ? size : undefined,
+    };
+  }
+
   const response = await fetch(`https://archive.org/metadata/${encodeURIComponent(id)}`);
   if (!response.ok) throw new Error("No pude leer ese ítem.");
   const data = (await response.json()) as {
