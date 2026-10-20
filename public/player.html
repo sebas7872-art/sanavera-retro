@@ -1,822 +1,106 @@
 <!DOCTYPE html>
 <html lang="es">
-  <head>
-    <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-    <title>Sanavera Retro</title>
-    <link rel="icon" href="favicon.svg" type="image/svg+xml" />
-    <link rel="preconnect" href="https://fonts.googleapis.com" />
-    <link
-      rel="stylesheet"
-      href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,560&family=Outfit:wght@500;600&display=swap"
-    />
-    <style>
-      :root {
-        --bg: #14120e;
-        --surface: #221f1a;
-        --fg: #f4efe4;
-        --muted: #a39886;
-        --accent: #f0a202;
-        --line: color-mix(in srgb, var(--fg) 16%, var(--bg));
-        font-family: Outfit, ui-sans-serif, system-ui, sans-serif;
-      }
-      * { box-sizing: border-box; }
-      html, body {
-        margin: 0;
-        height: 100%;
-        background: var(--bg);
-        color: var(--fg);
-        overflow: hidden;
-        touch-action: none;
-        user-select: none;
-        -webkit-user-select: none;
-      }
-      #stage { height: 100dvh; display: flex; flex-direction: column; }
-      #screen {
-        position: relative;
-        flex: 1 1 50%;
-        min-height: 0;
-        background: #000;
-      }
-      #game { position: absolute; inset: 0; }
-      #game .ejs_parent,
-      #game .ejs_canvas_parent { width: 100% !important; height: 100% !important; }
-      .ejs_menu_bar,
-      .ejs_virtualGamepad_parent,
-      .ejs_settings_parent,
-      .ejs_menu_button,
-      .ejs_context_menu { display: none !important; }
-      #back {
-        position: absolute;
-        z-index: 3;
-        top: max(0.6rem, env(safe-area-inset-top));
-        left: 0.6rem;
-        color: var(--fg);
-        background: color-mix(in srgb, var(--bg) 78%, transparent);
-        text-decoration: none;
-        font-size: 0.85rem;
-        font-weight: 600;
-        padding: 0.55rem 0.8rem;
-        border-radius: 999px;
-      }
-      #hint {
-        position: absolute;
-        z-index: 2;
-        left: 0.8rem;
-        right: 0.8rem;
-        bottom: 0.7rem;
-        margin: 0;
-        color: var(--muted);
-        font-size: 0.75rem;
-        line-height: 1.35;
-        text-align: center;
-      }
-      #deck {
-        flex: 0 0 auto;
-        width: 100%;
-        max-width: 100%;
-        min-height: 0;
-        display: flex;
-        flex-direction: column;
-        justify-content: flex-end;
-        gap: 0.4rem;
-        padding: 0.35rem 0.55rem max(0.45rem, env(safe-area-inset-bottom));
-        overflow: hidden;
-      }
-      .playrow {
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        gap: 0.45rem;
-        width: 100%;
-        min-width: 0;
-      }
-      button {
-        font: inherit;
-        color: var(--fg);
-        background: var(--surface);
-        border: 1px solid var(--line);
-        border-radius: 0.9rem;
-        touch-action: none;
-        cursor: pointer;
-      }
-      button.is-down { background: var(--accent); color: var(--bg); border-color: var(--accent); }
-      .stick {
-        --size: min(40vw, 26dvh, 11rem);
-        width: var(--size);
-        height: var(--size);
-        position: relative;
-        flex: 0 0 auto;
-        touch-action: none;
-      }
-      .stick-base {
-        position: absolute;
-        inset: 7%;
-        border-radius: 50%;
-        background:
-          radial-gradient(circle at 50% 42%, #3a342c, #16130f 72%);
-        border: 1px solid var(--line);
-        box-shadow: inset 0 10px 18px rgba(0, 0, 0, 0.38);
-      }
-      .stick-base::before {
-        content: "";
-        position: absolute;
-        inset: 16%;
-        background:
-          linear-gradient(var(--muted), var(--muted)) center / 2px 100% no-repeat,
-          linear-gradient(var(--muted), var(--muted)) center / 100% 2px no-repeat;
-        opacity: 0.28;
-        pointer-events: none;
-      }
-      .stick-knob {
-        position: absolute;
-        left: 50%;
-        top: 50%;
-        width: 38%;
-        height: 38%;
-        border-radius: 50%;
-        transform: translate(calc(-50% + var(--x, 0px)), calc(-50% + var(--y, 0px)));
-        background: radial-gradient(circle at 35% 30%, #fff6d8, var(--accent) 46%, #a86b00);
-        box-shadow: 0 8px 16px rgba(0, 0, 0, 0.42);
-        pointer-events: none;
-      }
-      .meta {
-        display: flex;
-        flex-direction: row;
-        align-items: center;
-        justify-content: center;
-        gap: 0.4rem;
-        width: 100%;
-      }
-      .meta button {
-        min-height: 2.55rem;
-        padding: 0.3rem 0.75rem;
-        border-radius: 999px;
-        font-size: 0.72rem;
-        font-weight: 600;
-        letter-spacing: 0.04em;
-        text-transform: uppercase;
-      }
-      .actions {
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        justify-content: center;
-        gap: 0.35rem;
-        min-width: 0;
-        flex: 0 1 auto;
-      }
-      .faces { position: relative; flex: 0 0 auto; }
-      .faces button {
-        position: absolute;
-        width: var(--face);
-        height: var(--face);
-        border-radius: 999px;
-        font-family: Fraunces, ui-serif, Georgia, serif;
-        font-size: 1.2rem;
-      }
-      .faces { --face: clamp(2.75rem, 13vw, 4.05rem); }
-      .faces.pair {
-        width: calc(var(--face) * 2 + 0.85rem);
-        height: calc(var(--face) + 0.4rem);
-      }
-      .pair .b { left: 0; top: 50%; transform: translateY(-50%); }
-      .pair .a { right: 0; top: 50%; transform: translateY(-50%); }
-      .faces.row {
-        position: static;
-        width: auto;
-        height: auto;
-        display: flex;
-        gap: 0.35rem;
-      }
-      .faces.row button { position: static; }
-      .faces.quad,
-      .faces.grid {
-        position: static;
-        display: grid;
-        gap: 0.32rem;
-        width: auto;
-        height: auto;
-      }
-      .faces.quad { grid-template-columns: repeat(2, var(--face)); }
-      .faces.nes {
-        --face: clamp(2.55rem, 12vw, 3.7rem);
-        display: grid;
-        grid-template-columns: repeat(2, var(--face));
-        gap: 0.32rem;
-        width: auto;
-        height: auto;
-        position: static;
-      }
-      .faces.nes button {
-        position: static;
-        display: grid;
-        place-items: center;
-        padding: 0.1rem;
-        line-height: 1.05;
-      }
-      .faces.nes button.combo {
-        grid-column: 1 / -1;
-        width: 100%;
-        height: auto;
-        min-height: calc(var(--face) * 0.72);
-        border-radius: 999px;
-        font-family: Outfit, ui-sans-serif, sans-serif;
-        font-size: 0.78rem;
-        font-weight: 600;
-        letter-spacing: 0.04em;
-      }
-      .faces.grid {
-        --face: clamp(2.2rem, 10.2vw, 3.05rem);
-        grid-template-columns: repeat(3, var(--face));
-      }
-      .faces.quad button,
-      .faces.grid button {
-        position: static;
-        display: grid;
-        place-items: center;
-        padding: 0.1rem;
-        line-height: 1.05;
-      }
-      .faces button.turbo {
-        font-family: Outfit, ui-sans-serif, sans-serif;
-        font-size: 0.68rem;
-        font-weight: 600;
-        letter-spacing: 0.01em;
-        line-height: 1.05;
-      }
-      .config {
-        display: flex;
-        flex-wrap: wrap;
-        align-items: center;
-        justify-content: center;
-        gap: 0.28rem;
-      }
-      .config span {
-        margin-right: 0.15rem;
-        color: var(--muted);
-        font-size: 0.66rem;
-        font-weight: 600;
-        letter-spacing: 0.06em;
-        text-transform: uppercase;
-      }
-      .config button {
-        min-width: 2rem;
-        min-height: 2rem;
-        padding: 0.1rem 0.45rem;
-        border-radius: 999px;
-        font-size: 0.7rem;
-        font-weight: 600;
-      }
-      .faces.diamond {
-        width: calc(var(--face) * 2.95);
-        height: calc(var(--face) * 2.95);
-      }
-      .diamond .n { top: 0; left: 50%; transform: translateX(-50%); }
-      .diamond .e { top: 50%; right: 0; transform: translateY(-50%); }
-      .diamond .s { bottom: 0; left: 50%; transform: translateX(-50%); }
-      .diamond .w { top: 50%; left: 0; transform: translateY(-50%); }
-      .shoulders {
-        display: flex;
-        width: 100%;
-        justify-content: space-between;
-        gap: 0.4rem;
-      }
-      .shoulders button {
-        position: static;
-        width: auto;
-        height: auto;
-        min-width: 2.9rem;
-        min-height: 2.35rem;
-        padding: 0.2rem 0.65rem;
-        border-radius: 999px;
-        font-family: Outfit, sans-serif;
-        font-size: 0.78rem;
-      }
-      .triggers {
-        display: flex;
-        width: 100%;
-        justify-content: space-between;
-        gap: 0.4rem;
-      }
-      .triggers button {
-        position: static;
-        width: auto;
-        height: auto;
-        min-width: 2.9rem;
-        min-height: 2.1rem;
-        padding: 0.15rem 0.55rem;
-        border-radius: 999px;
-        font-family: Outfit, sans-serif;
-        font-size: 0.72rem;
-        opacity: 0.92;
-      }
-      @media (orientation: landscape) and (max-height: 520px) {
-        #stage { flex-direction: row; }
-        #screen { flex: 1 1 auto; min-height: 0; }
-        #deck {
-          width: min(48vw, 22rem);
-          height: 100%;
-          max-height: 100%;
-          justify-content: center;
-          padding: 0.4rem 0.45rem;
-        }
-        .stick { --size: min(34dvh, 100%); }
-        .faces { --face: clamp(2.4rem, 9dvh, 3.3rem); }
-        .meta button { min-height: 2.1rem; padding: 0.2rem 0.55rem; }
-      }
-    </style>
-  </head>
-  <body>
-    <div id="stage">
-      <section id="screen">
-        <a id="back" href="/">Volver</a>
-        <div id="game"></div>
-        <p id="hint" hidden></p>
-      </section>
-      <section id="deck" aria-label="Controles"></section>
-    </div>
-    <script>
-      (function () {
-        var q = new URLSearchParams(location.search);
-        var rom = q.get("url") || "";
-        var core = q.get("core") || "nes";
-        var sys = q.get("sys") || "nes";
-        var back = q.get("back") || "/";
-        if (back.indexOf("://") !== -1 || back.startsWith("//") || !/^[a-zA-Z0-9._~/?=&%+-]+$/.test(back)) back = "/";
-        document.getElementById("back").setAttribute("href", back);
-
-        var hint = document.getElementById("hint");
-        function say(text) {
-          hint.hidden = !text;
-          hint.textContent = text || "";
-        }
-
-        if (rom.indexOf("https://cors.archive.org/cors/") !== 0) {
-          say("Ese archivo no viene de Internet Archive.");
-          return;
-        }
-
-        var pads = {
-          nes: {
-            dpad: true,
-            meta: [
-              { label: "Select", index: 2 },
-              { label: "Start", index: 3 },
-            ],
-            faces: "nes",
-            face: [
-              { label: "B Turbo", index: 0, turbo: true },
-              { label: "A Turbo", index: 8, turbo: true },
-              { label: "B", index: 0 },
-              { label: "A", index: 8 },
-              { label: "A+B", indices: [0, 8], combo: true },
-            ],
-          },
-          sms: {
-            dpad: true,
-            meta: [{ label: "Pausa", index: 3 }],
-            faces: "pair",
-            face: [
-              { label: "1", index: 0, slot: "b" },
-              { label: "2", index: 8, slot: "a" },
-            ],
-          },
-          md: {
-            dpad: true,
-            meta: [
-              { label: "Mode", index: 2 },
-              { label: "Start", index: 3 },
-            ],
-            faces: "grid",
-            face: [
-              { label: "X", index: 10 },
-              { label: "Y", index: 9 },
-              { label: "Z", index: 11 },
-              { label: "A", index: 1 },
-              { label: "B", index: 0 },
-              { label: "C", index: 8 },
-            ],
-          },
-          snes: {
-            dpad: true,
-            meta: [
-              { label: "Select", index: 2 },
-              { label: "Start", index: 3 },
-            ],
-            faces: "diamond",
-            shoulders: [
-              { label: "L", index: 10 },
-              { label: "R", index: 11 },
-            ],
-            face: [
-              { label: "X", index: 9, slot: "n" },
-              { label: "A", index: 8, slot: "e" },
-              { label: "B", index: 0, slot: "s" },
-              { label: "Y", index: 1, slot: "w" },
-            ],
-          },
-          ps1: {
-            dpad: true,
-            meta: [
-              { label: "Select", index: 2 },
-              { label: "Start", index: 3 },
-            ],
-            faces: "diamond",
-            shoulders: [
-              { label: "L1", index: 10 },
-              { label: "R1", index: 11 },
-            ],
-            triggers: [
-              { label: "L2", index: 12 },
-              { label: "R2", index: 13 },
-            ],
-            face: [
-              { label: "\u25b3", index: 9, slot: "n" },
-              { label: "\u25cb", index: 8, slot: "e" },
-              { label: "\u2715", index: 0, slot: "s" },
-              { label: "\u25a1", index: 1, slot: "w" },
-            ],
-          },
-          arcade: {
-            dpad: true,
-            configure: "arcade",
-            meta: [
-              { label: "Ficha", index: 2 },
-              { label: "1P", index: 3 },
-            ],
-            faces: "grid",
-            face: [
-              { label: "1", index: 0 },
-              { label: "2", index: 8 },
-              { label: "3", index: 1 },
-              { label: "4", index: 9 },
-              { label: "5", index: 10 },
-              { label: "6", index: 11 },
-            ],
-          },
-        };
-        var layout = pads[sys] || pads.nes;
-        var deck = document.getElementById("deck");
-        var ARCADE_KEY = "sanavera.arcade";
-        var ARCADE_MAPS = {
-          std: [0, 8, 1, 9, 10, 11],
-          alt: [0, 1, 8, 9, 10, 11],
-        };
-
-        function readArcade() {
-          try {
-            var raw = JSON.parse(localStorage.getItem(ARCADE_KEY) || "");
-            var count = raw && [2, 3, 4, 6].indexOf(raw.count) >= 0 ? raw.count : 6;
-            var map = raw && raw.map === "alt" ? "alt" : "std";
-            return { count: count, map: map };
-          } catch (e) {
-            return { count: 6, map: "std" };
-          }
-        }
-
-        function press(index, down) {
-          var emu = window.EJS_emulator;
-          if (!emu || !emu.gameManager || !emu.started) return;
-          emu.gameManager.simulateInput(0, index, down ? 1 : 0);
-        }
-
-        function makeButton(item) {
-          var button = document.createElement("button");
-          button.type = "button";
-          var indices = item.indices
-            ? item.indices.slice()
-            : [item.index];
-          button.dataset.pad = indices.join(",");
-          button.setAttribute("aria-label", item.label);
-          if (item.slot) button.className = item.slot;
-          if (item.combo) button.classList.add("combo");
-          if (item.turbo) {
-            button.classList.add("turbo");
-            var main = document.createElement("span");
-            main.textContent = item.label.replace(" Turbo", "");
-            var sub = document.createElement("span");
-            sub.textContent = "Turbo";
-            button.appendChild(main);
-            button.appendChild(document.createElement("br"));
-            button.appendChild(sub);
-          } else {
-            button.textContent = item.label;
-          }
-          var timer = null;
-          var held = false;
-          var phase = false;
-          function pressAll(down) {
-            for (var i = 0; i < indices.length; i++) {
-              press(indices[i], down);
-            }
-          }
-          function stop(event) {
-            if (event) event.preventDefault();
-            if (!held) return;
-            held = false;
-            button.classList.remove("is-down");
-            if (timer) {
-              clearInterval(timer);
-              timer = null;
-            }
-            pressAll(false);
-          }
-          button.addEventListener("pointerdown", function (event) {
-            event.preventDefault();
-            if (held) return;
-            held = true;
-            phase = true;
-            button.classList.add("is-down");
-            try { button.setPointerCapture(event.pointerId); } catch (e) {}
-            if (navigator.vibrate) navigator.vibrate(8);
-            pressAll(true);
-            if (item.turbo) {
-              timer = window.setInterval(function () {
-                phase = !phase;
-                pressAll(phase);
-              }, 60);
-            }
-          });
-          button.addEventListener("pointerup", stop);
-          button.addEventListener("pointercancel", stop);
-          button.addEventListener("contextmenu", function (event) { event.preventDefault(); });
-          return button;
-        }
-
-        function makeStick() {
-          var root = document.createElement("div");
-          root.className = "stick";
-          root.setAttribute("role", "application");
-          root.setAttribute("aria-label", "Movimiento. Apoya el dedo y arrastra.");
-          var base = document.createElement("div");
-          base.className = "stick-base";
-          var knob = document.createElement("div");
-          knob.className = "stick-knob";
-          root.appendChild(base);
-          root.appendChild(knob);
-
-          var dirs = { 4: false, 5: false, 6: false, 7: false };
-          var active = null;
-          function paint() {
-            var names = [];
-            if (dirs[4]) names.push("up");
-            if (dirs[5]) names.push("down");
-            if (dirs[6]) names.push("left");
-            if (dirs[7]) names.push("right");
-            root.dataset.dirs = names.join(" ");
-          }
-          function setDir(index, on) {
-            if (dirs[index] === on) return;
-            dirs[index] = on;
-            press(index, on);
-            paint();
-          }
-          function release() {
-            setDir(4, false);
-            setDir(5, false);
-            setDir(6, false);
-            setDir(7, false);
-            knob.style.setProperty("--x", "0px");
-            knob.style.setProperty("--y", "0px");
-          }
-          function move(clientX, clientY) {
-            var rect = root.getBoundingClientRect();
-            var cx = rect.left + rect.width / 2;
-            var cy = rect.top + rect.height / 2;
-            var radius = rect.width * 0.32;
-            var dx = clientX - cx;
-            var dy = clientY - cy;
-            var dist = Math.hypot(dx, dy) || 0;
-            var clamped = Math.min(dist, radius);
-            var angle = dist ? Math.atan2(dy, dx) : 0;
-            knob.style.setProperty("--x", Math.cos(angle) * clamped + "px");
-            knob.style.setProperty("--y", Math.sin(angle) * clamped + "px");
-            if (dist < radius * 0.28) {
-              setDir(4, false);
-              setDir(5, false);
-              setDir(6, false);
-              setDir(7, false);
-              return;
-            }
-            var nx = dx / dist;
-            var ny = dy / dist;
-            var gate = 0.42;
-            setDir(6, nx < -gate);
-            setDir(7, nx > gate);
-            setDir(4, ny < -gate);
-            setDir(5, ny > gate);
-          }
-          root.addEventListener("pointerdown", function (event) {
-            event.preventDefault();
-            active = event.pointerId;
-            try { root.setPointerCapture(event.pointerId); } catch (e) {}
-            if (navigator.vibrate) navigator.vibrate(8);
-            move(event.clientX, event.clientY);
-          });
-          root.addEventListener("pointermove", function (event) {
-            if (active !== event.pointerId) return;
-            event.preventDefault();
-            move(event.clientX, event.clientY);
-          });
-          var end = function (event) {
-            if (event && active !== event.pointerId) return;
-            if (event) event.preventDefault();
-            active = null;
-            release();
-          };
-          root.addEventListener("pointerup", end);
-          root.addEventListener("pointercancel", end);
-          root.addEventListener("lostpointercapture", function () {
-            if (active === null) return;
-            active = null;
-            release();
-          });
-          root.addEventListener("contextmenu", function (event) { event.preventDefault(); });
-          paint();
-          return root;
-        }
-
-        var playrow = document.createElement("div");
-        playrow.className = "playrow";
-        if (layout.dpad) playrow.appendChild(makeStick());
-
-        var meta = document.createElement("div");
-        meta.className = "meta";
-        layout.meta.forEach(function (item) {
-          meta.appendChild(makeButton(item));
-        });
-        var sound = document.createElement("button");
-        sound.type = "button";
-        sound.textContent = "Sonido";
-        sound.addEventListener("click", function () {
-          var emu = window.EJS_emulator;
-          if (!emu || !emu.setVolume) return;
-          var next = emu.muted || emu.volume === 0 ? 0.85 : 0;
-          emu.muted = next === 0;
-          emu.setVolume(next);
-          sound.classList.toggle("is-down", next === 0);
-        });
-        meta.appendChild(sound);
-        deck.appendChild(meta);
-
-        var actions = document.createElement("div");
-        actions.className = "actions";
-        var faces = document.createElement("div");
-        faces.className = "faces " + layout.faces;
-        if (layout.triggers) {
-          var triggers = document.createElement("div");
-          triggers.className = "triggers";
-          layout.triggers.forEach(function (item) {
-            triggers.appendChild(makeButton(item));
-          });
-          actions.appendChild(triggers);
-        }
-        if (layout.shoulders) {
-          var shoulders = document.createElement("div");
-          shoulders.className = "shoulders";
-          layout.shoulders.forEach(function (item) {
-            shoulders.appendChild(makeButton(item));
-          });
-          actions.appendChild(shoulders);
-        }
-        layout.face.forEach(function (item) {
-          faces.appendChild(makeButton(item));
-        });
-        actions.appendChild(faces);
-        if (layout.configure === "arcade") {
-          var saved = readArcade();
-          function applyArcade(next) {
-            localStorage.setItem(ARCADE_KEY, JSON.stringify(next));
-            var indices = ARCADE_MAPS[next.map];
-            var cols = next.count === 3 || next.count === 6 ? 3 : 2;
-            faces.style.gridTemplateColumns = "repeat(" + cols + ", var(--face))";
-            Array.prototype.forEach.call(faces.children, function (button, index) {
-              button.dataset.pad = String(indices[index]);
-              button.hidden = index >= next.count;
-            });
-            Array.prototype.forEach.call(config.querySelectorAll("button"), function (button) {
-              var on = button.dataset.kind === "count"
-                ? Number(button.dataset.value) === next.count
-                : button.dataset.value === next.map;
-              button.classList.toggle("is-down", on);
-            });
-          }
-          var config = document.createElement("div");
-          config.className = "config";
-          var countLabel = document.createElement("span");
-          countLabel.textContent = "Botones";
-          config.appendChild(countLabel);
-          [2, 3, 4, 6].forEach(function (count) {
-            var button = document.createElement("button");
-            button.type = "button";
-            button.textContent = String(count);
-            button.dataset.kind = "count";
-            button.dataset.value = String(count);
-            button.addEventListener("click", function () {
-              applyArcade({ count: count, map: saved.map });
-              saved = readArcade();
-            });
-            config.appendChild(button);
-          });
-          var mapLabel = document.createElement("span");
-          mapLabel.textContent = "Mapa";
-          config.appendChild(mapLabel);
-          ["std", "alt"].forEach(function (map) {
-            var button = document.createElement("button");
-            button.type = "button";
-            button.textContent = map === "std" ? "A" : "B";
-            button.dataset.kind = "map";
-            button.dataset.value = map;
-            button.addEventListener("click", function () {
-              applyArcade({ count: saved.count, map: map });
-              saved = readArcade();
-            });
-            config.appendChild(button);
-          });
-          actions.appendChild(config);
-          applyArcade(saved);
-        }
-        playrow.appendChild(actions);
-        deck.appendChild(playrow);
-
-        var keys = {
-          ArrowUp: 4,
-          ArrowDown: 5,
-          ArrowLeft: 6,
-          ArrowRight: 7,
-          Enter: 3,
-          ShiftLeft: 2,
-          ShiftRight: 2,
-          KeyZ: 8,
-          KeyX: 0,
-          KeyA: 1,
-          KeyS: 9,
-          KeyQ: 10,
-          KeyE: 11,
-          KeyR: 12,
-          KeyF: 13,
-          Digit1: 2,
-          Digit2: 3,
-        };
-        window.addEventListener("keydown", function (event) {
-          if (event.repeat || !(event.code in keys)) return;
-          event.preventDefault();
-          press(keys[event.code], true);
-        });
-        window.addEventListener("keyup", function (event) {
-          if (!(event.code in keys)) return;
-          press(keys[event.code], false);
-        });
-
-        window.EJS_player = "#game";
-        window.EJS_gameUrl = rom;
-        window.EJS_core = core;
-        window.EJS_pathtodata = "https://cdn.emulatorjs.org/stable/data/";
-        window.EJS_startOnLoaded = true;
-        window.EJS_threads = false;
-        window.EJS_volume = 0.85;
-        window.EJS_color = "#f0a202";
-        window.EJS_backgroundColor = "#000000";
-        window.EJS_disableDatabases = true;
-        window.EJS_hideSettings = true;
-        window.EJS_Buttons = {
-          playPause: false,
-          restart: false,
-          mute: false,
-          settings: false,
-          fullscreen: false,
-          saveState: false,
-          loadState: false,
-          screenshot: false,
-          cheat: false,
-          volume: false,
-          cacheManager: false,
-          quickSave: false,
-          quickLoad: false,
-          saveSavFiles: false,
-          contextMenu: false,
-        };
-        var started = false;
-        window.EJS_onGameStart = function () {
-          started = true;
-          say("");
-          try { window.EJS_emulator.setVolume(0.85); } catch (e) {}
-        };
-        window.setTimeout(function () {
-          if (started) return;
-          say(core === "mame"
-            ? "Sigue cargando. Si no aparece el juego, este arcade no es compatible."
-            : core === "psx"
-              ? "PS1: descargando (puede tardar varios minutos en movil)..."
-              : "Sigue cargando el emulador y el archivo...");
-        }, 12000);
-
-        var script = document.createElement("script");
-        script.src = "https://cdn.emulatorjs.org/stable/data/loader.js";
-        script.onerror = function () { say("No pude cargar el emulador."); };
-        document.body.appendChild(script);
-      })();
-    </script>
-  </body>
-</html>
+<head><meta charset="utf-8"/><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"/><title>Sanavera Retro</title>
+<link rel="icon" href="favicon.svg" type="image/svg+xml"/>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,560&family=Outfit:wght@500;600&display=swap"/>
+<style>
+:root{--bg:#14120e;--surface:#221f1a;--fg:#f4efe4;--muted:#a39886;--accent:#f0a202;--line:color-mix(in srgb,var(--fg) 16%,var(--bg));font-family:Outfit,ui-sans-serif,system-ui,sans-serif}
+*{box-sizing:border-box}html,body{margin:0;height:100%;background:var(--bg);color:var(--fg);overflow:hidden;touch-action:none;user-select:none;-webkit-user-select:none}
+#stage{height:100dvh;display:flex;flex-direction:column}
+#screen{position:relative;flex:1 1 50%;min-height:0;background:#000}
+#game{position:absolute;inset:0}
+#game .ejs_parent,#game .ejs_canvas_parent{width:100%!important;height:100%!important}
+.ejs_menu_bar,.ejs_virtualGamepad_parent,.ejs_settings_parent,.ejs_menu_button,.ejs_context_menu{display:none!important}
+#back{position:absolute;z-index:3;top:max(.6rem,env(safe-area-inset-top));left:.6rem;color:var(--fg);background:color-mix(in srgb,var(--bg) 78%,transparent);text-decoration:none;font-size:.85rem;font-weight:600;padding:.55rem .8rem;border-radius:999px}
+#hint{position:absolute;z-index:2;left:.8rem;right:.8rem;bottom:.7rem;margin:0;color:var(--muted);font-size:.75rem;line-height:1.35;text-align:center}
+#deck{flex:0 0 auto;width:100%;max-width:100%;min-height:0;display:flex;flex-direction:column;justify-content:flex-end;gap:.4rem;padding:.35rem .55rem max(.45rem,env(safe-area-inset-bottom));overflow:hidden}
+.playrow{display:flex;align-items:center;justify-content:space-between;gap:.45rem;width:100%;min-width:0}
+button{font:inherit;color:var(--fg);background:var(--surface);border:1px solid var(--line);border-radius:.9rem;touch-action:none;cursor:pointer}
+button.is-down{background:var(--accent);color:var(--bg);border-color:var(--accent)}
+.stick{--size:min(40vw,26dvh,11rem);width:var(--size);height:var(--size);position:relative;flex:0 0 auto;touch-action:none}
+.stick-base{position:absolute;inset:7%;border-radius:50%;background:radial-gradient(circle at 50% 42%,#3a342c,#16130f 72%);border:1px solid var(--line);box-shadow:inset 0 10px 18px rgba(0,0,0,.38)}
+.stick-base::before{content:"";position:absolute;inset:16%;background:linear-gradient(var(--muted),var(--muted)) center/2px 100% no-repeat,linear-gradient(var(--muted),var(--muted)) center/100% 2px no-repeat;opacity:.28;pointer-events:none}
+.stick-knob{position:absolute;left:50%;top:50%;width:38%;height:38%;border-radius:50%;transform:translate(calc(-50% + var(--x,0px)),calc(-50% + var(--y,0px)));background:radial-gradient(circle at 35% 30%,#fff6d8,var(--accent) 46%,#a86b00);box-shadow:0 8px 16px rgba(0,0,0,.42);pointer-events:none}
+.meta{display:flex;flex-direction:row;align-items:center;justify-content:center;gap:.4rem;width:100%}
+.meta button{min-height:2.55rem;padding:.3rem .75rem;border-radius:999px;font-size:.72rem;font-weight:600;letter-spacing:.04em;text-transform:uppercase}
+.actions{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:.35rem;min-width:0;flex:0 1 auto}
+.faces{position:relative;flex:0 0 auto;--face:clamp(2.75rem,13vw,4.05rem)}
+.faces button{position:absolute;width:var(--face);height:var(--face);border-radius:999px;font-family:Fraunces,ui-serif,Georgia,serif;font-size:1.2rem}
+.faces.pair{width:calc(var(--face)*2 + .85rem);height:calc(var(--face) + .4rem)}
+.pair .b{left:0;top:50%;transform:translateY(-50%)}.pair .a{right:0;top:50%;transform:translateY(-50%)}
+.faces.row{position:static;width:auto;height:auto;display:flex;gap:.35rem}.faces.row button{position:static}
+.faces.quad,.faces.grid{position:static;display:grid;gap:.32rem;width:auto;height:auto}
+.faces.quad{grid-template-columns:repeat(2,var(--face))}
+.faces.nes{--face:clamp(2.55rem,12vw,3.7rem);display:grid;grid-template-columns:repeat(2,var(--face));gap:.32rem;width:auto;height:auto;position:static}
+.faces.nes button{position:static;display:grid;place-items:center;padding:.1rem;line-height:1.05}
+.faces.nes button.combo{grid-column:1/-1;width:100%;height:auto;min-height:calc(var(--face)*.72);border-radius:999px;font-family:Outfit,ui-sans-serif,sans-serif;font-size:.78rem;font-weight:600;letter-spacing:.04em}
+.faces.grid{--face:clamp(2.2rem,10.2vw,3.05rem);grid-template-columns:repeat(3,var(--face))}
+.faces.quad button,.faces.grid button{position:static;display:grid;place-items:center;padding:.1rem;line-height:1.05}
+.faces button.turbo{font-family:Outfit,ui-sans-serif,sans-serif;font-size:.68rem;font-weight:600;letter-spacing:.01em;line-height:1.05}
+.config{display:flex;flex-wrap:wrap;align-items:center;justify-content:center;gap:.28rem}
+.config span{margin-right:.15rem;color:var(--muted);font-size:.66rem;font-weight:600;letter-spacing:.06em;text-transform:uppercase}
+.config button{min-width:2rem;min-height:2rem;padding:.1rem .45rem;border-radius:999px;font-size:.7rem;font-weight:600}
+.faces.diamond{width:calc(var(--face)*2.95);height:calc(var(--face)*2.95)}
+.diamond .n{top:0;left:50%;transform:translateX(-50%)}.diamond .e{top:50%;right:0;transform:translateY(-50%)}.diamond .s{bottom:0;left:50%;transform:translateX(-50%)}.diamond .w{top:50%;left:0;transform:translateY(-50%)}
+.shoulders,.triggers{display:flex;width:100%;justify-content:space-between;gap:.4rem}
+.shoulders button,.triggers button{position:static;width:auto;height:auto;min-width:2.9rem;min-height:2.35rem;padding:.2rem .65rem;border-radius:999px;font-family:Outfit,sans-serif;font-size:.78rem}
+.triggers button{min-height:2.1rem;padding:.15rem .55rem;font-size:.72rem;opacity:.92}
+@media (orientation:landscape) and (max-height:520px){#stage{flex-direction:row}#screen{flex:1 1 auto;min-height:0}#deck{width:min(48vw,22rem);height:100%;max-height:100%;justify-content:center;padding:.4rem .45rem}.stick{--size:min(34dvh,100%)}.faces{--face:clamp(2.4rem,9dvh,3.3rem)}.meta button{min-height:2.1rem;padding:.2rem .55rem}}
+</style></head>
+<body>
+<div id="stage">
+<section id="screen"><a id="back" href="/">Volver</a><div id="game"></div><p id="hint" hidden></p></section>
+<section id="deck" aria-label="Controles"></section>
+</div>
+<script>
+(function(){
+var q=new URLSearchParams(location.search);
+var rom=q.get("url")||"";
+var core=q.get("core")||"nes";
+var sys=q.get("sys")||"nes";
+var back=q.get("back")||"/";
+if(back.indexOf("://")!==-1||back.startsWith("//")||!/^[a-zA-Z0-9._~/?=&%+-]+$/.test(back))back="/";
+document.getElementById("back").setAttribute("href",back);
+var hint=document.getElementById("hint");
+function say(text){hint.hidden=!text;hint.textContent=text||"";}
+if(rom.indexOf("https://cors.archive.org/cors/")!==0){say("Ese archivo no viene de Internet Archive.");return;}
+var pads={
+nes:{dpad:true,meta:[{label:"Select",index:2},{label:"Start",index:3}],faces:"nes",face:[{label:"B Turbo",index:0,turbo:true},{label:"A Turbo",index:8,turbo:true},{label:"B",index:0},{label:"A",index:8},{label:"A+B",indices:[0,8],combo:true}]},
+sms:{dpad:true,meta:[{label:"Pausa",index:3}],faces:"pair",face:[{label:"1",index:0,slot:"b"},{label:"2",index:8,slot:"a"}]},
+md:{dpad:true,meta:[{label:"Mode",index:2},{label:"Start",index:3}],faces:"grid",face:[{label:"X",index:10},{label:"Y",index:9},{label:"Z",index:11},{label:"A",index:1},{label:"B",index:0},{label:"C",index:8}]},
+snes:{dpad:true,meta:[{label:"Select",index:2},{label:"Start",index:3}],faces:"diamond",shoulders:[{label:"L",index:10},{label:"R",index:11}],face:[{label:"X",index:9,slot:"n"},{label:"A",index:8,slot:"e"},{label:"B",index:0,slot:"s"},{label:"Y",index:1,slot:"w"}]},
+ps1:{dpad:true,meta:[{label:"Select",index:2},{label:"Start",index:3}],faces:"diamond",shoulders:[{label:"L1",index:10},{label:"R1",index:11}],triggers:[{label:"L2",index:12},{label:"R2",index:13}],face:[{label:"\u25b3",index:9,slot:"n"},{label:"\u25cb",index:8,slot:"e"},{label:"\u2715",index:0,slot:"s"},{label:"\u25a1",index:1,slot:"w"}]},
+arcade:{dpad:true,configure:"arcade",meta:[{label:"Ficha",index:2},{label:"1P",index:3}],faces:"grid",face:[{label:"1",index:0},{label:"2",index:8},{label:"3",index:1},{label:"4",index:9},{label:"5",index:10},{label:"6",index:11}]}
+};
+var layout=pads[sys]||pads.nes;
+var deck=document.getElementById("deck");
+var ARCADE_KEY="sanavera.arcade";
+var ARCADE_MAPS={std:[0,8,1,9,10,11],alt:[0,1,8,9,10,11]};
+function readArcade(){try{var raw=JSON.parse(localStorage.getItem(ARCADE_KEY)||"");var count=raw&&[2,3,4,6].indexOf(raw.count)>=0?raw.count:6;var map=raw&&raw.map==="alt"?"alt":"std";return{count:count,map:map};}catch(e){return{count:6,map:"std";}}}
+function press(index,down){var emu=window.EJS_emulator;if(!emu||!emu.gameManager||!emu.started)return;emu.gameManager.simulateInput(0,index,down?1:0);}
+function makeButton(item){var button=document.createElement("button");button.type="button";var indices=item.indices?item.indices.slice():[item.index];button.dataset.pad=indices.join(",");button.setAttribute("aria-label",item.label);if(item.slot)button.className=item.slot;if(item.combo)button.classList.add("combo");if(item.turbo){button.classList.add("turbo");var main=document.createElement("span");main.textContent=item.label.replace(" Turbo","");var sub=document.createElement("span");sub.textContent="Turbo";button.appendChild(main);button.appendChild(document.createElement("br"));button.appendChild(sub);}else{button.textContent=item.label;}var timer=null;var held=false;var phase=false;function pressAll(down){for(var i=0;i<indices.length;i++){press(indices[i],down);}}function stop(event){if(event)event.preventDefault();if(!held)return;held=false;button.classList.remove("is-down");if(timer){clearInterval(timer);timer=null;}pressAll(false);}button.addEventListener("pointerdown",function(event){event.preventDefault();if(held)return;held=true;phase=true;button.classList.add("is-down");try{button.setPointerCapture(event.pointerId);}catch(e){}if(navigator.vibrate)navigator.vibrate(8);pressAll(true);if(item.turbo){timer=window.setInterval(function(){phase=!phase;pressAll(phase);},60);}});button.addEventListener("pointerup",stop);button.addEventListener("pointercancel",stop);button.addEventListener("contextmenu",function(event){event.preventDefault();});return button;}
+function makeStick(){var root=document.createElement("div");root.className="stick";root.setAttribute("role","application");root.setAttribute("aria-label","Movimiento");var base=document.createElement("div");base.className="stick-base";var knob=document.createElement("div");knob.className="stick-knob";root.appendChild(base);root.appendChild(knob);var dirs={4:false,5:false,6:false,7:false};var active=null;function setDir(index,on){if(dirs[index]===on)return;dirs[index]=on;press(index,on);}function release(){setDir(4,false);setDir(5,false);setDir(6,false);setDir(7,false);knob.style.setProperty("--x","0px");knob.style.setProperty("--y","0px");}function move(clientX,clientY){var rect=root.getBoundingClientRect();var cx=rect.left+rect.width/2;var cy=rect.top+rect.height/2;var radius=rect.width*0.32;var dx=clientX-cx;var dy=clientY-cy;var dist=Math.hypot(dx,dy)||0;var clamped=Math.min(dist,radius);var angle=dist?Math.atan2(dy,dx):0;knob.style.setProperty("--x",Math.cos(angle)*clamped+"px");knob.style.setProperty("--y",Math.sin(angle)*clamped+"px");if(dist<radius*0.28){setDir(4,false);setDir(5,false);setDir(6,false);setDir(7,false);return;}var nx=dx/dist;var ny=dy/dist;var gate=0.42;setDir(6,nx<-gate);setDir(7,nx>gate);setDir(4,ny<-gate);setDir(5,ny>gate);}root.addEventListener("pointerdown",function(event){event.preventDefault();active=event.pointerId;try{root.setPointerCapture(event.pointerId);}catch(e){}if(navigator.vibrate)navigator.vibrate(8);move(event.clientX,event.clientY);});root.addEventListener("pointermove",function(event){if(active!==event.pointerId)return;event.preventDefault();move(event.clientX,event.clientY);});var end=function(event){if(event&&active!==event.pointerId)return;if(event)event.preventDefault();active=null;release();};root.addEventListener("pointerup",end);root.addEventListener("pointercancel",end);root.addEventListener("lostpointercapture",function(){if(active===null)return;active=null;release();});root.addEventListener("contextmenu",function(event){event.preventDefault();});return root;}
+var playrow=document.createElement("div");playrow.className="playrow";if(layout.dpad)playrow.appendChild(makeStick());
+var meta=document.createElement("div");meta.className="meta";layout.meta.forEach(function(item){meta.appendChild(makeButton(item));});
+var sound=document.createElement("button");sound.type="button";sound.textContent="Sonido";sound.addEventListener("click",function(){var emu=window.EJS_emulator;if(!emu||!emu.setVolume)return;var next=emu.muted||emu.volume===0?0.85:0;emu.muted=next===0;emu.setVolume(next);sound.classList.toggle("is-down",next===0);});meta.appendChild(sound);deck.appendChild(meta);
+var actions=document.createElement("div");actions.className="actions";var faces=document.createElement("div");faces.className="faces "+layout.faces;
+if(layout.triggers){var triggers=document.createElement("div");triggers.className="triggers";layout.triggers.forEach(function(item){triggers.appendChild(makeButton(item));});actions.appendChild(triggers);}
+if(layout.shoulders){var shoulders=document.createElement("div");shoulders.className="shoulders";layout.shoulders.forEach(function(item){shoulders.appendChild(makeButton(item));});actions.appendChild(shoulders);}
+layout.face.forEach(function(item){faces.appendChild(makeButton(item));});actions.appendChild(faces);
+if(layout.configure==="arcade"){var saved=readArcade();function applyArcade(next){localStorage.setItem(ARCADE_KEY,JSON.stringify(next));var indices=ARCADE_MAPS[next.map];var cols=next.count===3||next.count===6?3:2;faces.style.gridTemplateColumns="repeat("+cols+", var(--face))";Array.prototype.forEach.call(faces.children,function(button,index){button.dataset.pad=String(indices[index]);button.hidden=index>=next.count;});Array.prototype.forEach.call(config.querySelectorAll("button"),function(button){var on=button.dataset.kind==="count"?Number(button.dataset.value)===next.count:button.dataset.value===next.map;button.classList.toggle("is-down",on);});}var config=document.createElement("div");config.className="config";var countLabel=document.createElement("span");countLabel.textContent="Botones";config.appendChild(countLabel);[2,3,4,6].forEach(function(count){var button=document.createElement("button");button.type="button";button.textContent=String(count);button.dataset.kind="count";button.dataset.value=String(count);button.addEventListener("click",function(){applyArcade({count:count,map:saved.map});saved=readArcade();});config.appendChild(button);});var mapLabel=document.createElement("span");mapLabel.textContent="Mapa";config.appendChild(mapLabel);["std","alt"].forEach(function(map){var button=document.createElement("button");button.type="button";button.textContent=map==="std"?"A":"B";button.dataset.kind="map";button.dataset.value=map;button.addEventListener("click",function(){applyArcade({count:saved.count,map:map});saved=readArcade();});config.appendChild(button);});actions.appendChild(config);applyArcade(saved);}
+playrow.appendChild(actions);deck.appendChild(playrow);
+var keys={ArrowUp:4,ArrowDown:5,ArrowLeft:6,ArrowRight:7,Enter:3,ShiftLeft:2,ShiftRight:2,KeyZ:8,KeyX:0,KeyA:1,KeyS:9,KeyQ:10,KeyE:11,KeyR:12,KeyF:13,Digit1:2,Digit2:3};
+window.addEventListener("keydown",function(event){if(event.repeat||!(event.code in keys))return;event.preventDefault();press(keys[event.code],true);});
+window.addEventListener("keyup",function(event){if(!(event.code in keys))return;press(keys[event.code],false);});
+window.EJS_player="#game";window.EJS_gameUrl=rom;window.EJS_core=core;window.EJS_pathtodata="https://cdn.emulatorjs.org/stable/data/";window.EJS_startOnLoaded=true;window.EJS_threads=false;window.EJS_volume=0.85;window.EJS_color="#f0a202";window.EJS_backgroundColor="#000000";window.EJS_disableDatabases=true;window.EJS_hideSettings=true;
+window.EJS_Buttons={playPause:false,restart:false,mute:false,settings:false,fullscreen:false,saveState:false,loadState:false,screenshot:false,cheat:false,volume:false,cacheManager:false,quickSave:false,quickLoad:false,saveSavFiles:false,contextMenu:false};
+var started=false;
+window.EJS_onGameStart=function(){started=true;say("");try{window.EJS_emulator.setVolume(0.85);}catch(e){}};
+if(core==="psx"){say("PS1: descargando el juego… puede tardar varios minutos.");}
+window.setTimeout(function(){if(started)return;if(core==="psx"){say("Si ves el menú de RetroArch y no el juego, este título no es compatible en el navegador. Usá Volver.");}else if(core==="mame"){say("Sigue cargando. Si no aparece el juego, este arcade no es compatible.");}else{say("Sigue cargando el emulador y el archivo…");}},core==="psx"?45000:12000);
+window.setTimeout(function(){if(started)return;if(core==="psx"){say("No se pudo iniciar el juego de PS1. Volvé al catálogo e intentá otro título (preferí los ISO).");}},90000);
+var script=document.createElement("script");script.src="https://cdn.emulatorjs.org/stable/data/loader.js";script.onerror=function(){say("No pude cargar el emulador.");};document.body.appendChild(script);
+})();
+</script>
+</body></html>
