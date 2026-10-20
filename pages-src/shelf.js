@@ -36,7 +36,7 @@ function esc(value) {
       case "&": return "&";
       case "<": return "<";
       case ">": return ">";
-      case '"': return """;
+      case String.fromCharCode(34): return """;
       case "'": return "&#39;";
       default: return char;
     }
