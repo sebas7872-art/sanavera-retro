@@ -14,6 +14,14 @@
 .ejs_menu_bar,.ejs_virtualGamepad_parent,.ejs_settings_parent,.ejs_menu_button,.ejs_context_menu{display:none!important}
 #back{position:absolute;z-index:3;top:max(.6rem,env(safe-area-inset-top));left:.6rem;color:var(--fg);background:color-mix(in srgb,var(--bg) 78%,transparent);text-decoration:none;font-size:.85rem;font-weight:600;padding:.55rem .8rem;border-radius:999px}
 #hint{position:absolute;z-index:2;left:.8rem;right:.8rem;bottom:.7rem;margin:0;color:var(--muted);font-size:.75rem;line-height:1.35;text-align:center}
+#loadui{position:absolute;inset:0;z-index:4;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:.65rem;padding:1.25rem;background:rgba(10,8,6,.88);text-align:center}
+#loadui[hidden]{display:none!important}
+#loadui .title{margin:0;font-family:Fraunces,ui-serif,Georgia,serif;font-size:1.15rem;color:var(--fg)}
+#loadui .msg{margin:0;max-width:22rem;color:var(--muted);font-size:.88rem;line-height:1.45}
+#loadui .spin{width:2rem;height:2rem;border:3px solid var(--line);border-top-color:var(--accent);border-radius:50%;animation:spin 0.9s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+#loadui.err .spin{display:none}
+#loadui.err .msg{color:var(--accent)}
 #deck{flex:0 0 auto;width:100%;max-width:100%;min-height:0;display:flex;flex-direction:column;justify-content:flex-end;gap:.4rem;padding:.35rem .55rem max(.45rem,env(safe-area-inset-bottom));overflow:hidden}
 .playrow{display:flex;align-items:center;justify-content:space-between;gap:.45rem;width:100%;min-width:0}
 button{font:inherit;color:var(--fg);background:var(--surface);border:1px solid var(--line);border-radius:.9rem;touch-action:none;cursor:pointer}
@@ -50,7 +58,7 @@ button.is-down{background:var(--accent);color:var(--bg);border-color:var(--accen
 </style></head>
 <body>
 <div id="stage">
-<section id="screen"><a id="back" href="/">Volver</a><div id="game"></div><p id="hint" hidden></p></section>
+<section id="screen"><a id="back" href="/">Volver</a><div id="game"></div><div id="loadui"><div class="spin" aria-hidden="true"></div><p class="title">Cargando</p><p class="msg" id="loadmsg">Preparando el emulador…</p></div><p id="hint" hidden></p></section>
 <section id="deck" aria-label="Controles"></section>
 </div>
 <script>
@@ -60,23 +68,50 @@ var rom=q.get("url")||"";
 var core=q.get("core")||"nes";
 var sys=q.get("sys")||"nes";
 var back=q.get("back")||"/";
+var gameName=q.get("name")||"";
 try{
   if(!rom){rom=sessionStorage.getItem("sanavera.rom")||"";if(rom)sessionStorage.removeItem("sanavera.rom");}
   if(!q.get("core")&&sessionStorage.getItem("sanavera.core"))core=sessionStorage.getItem("sanavera.core")||core;
   if(!q.get("sys")&&sessionStorage.getItem("sanavera.sys"))sys=sessionStorage.getItem("sanavera.sys")||sys;
+  if(!gameName)gameName=sessionStorage.getItem("sanavera.name")||"";
+  sessionStorage.removeItem("sanavera.name");
 }catch(e){}
 if(back.indexOf("://")!==-1||back.startsWith("//")||!/^[a-zA-Z0-9._~/?=&%+-]+$/.test(back))back="/";
 document.getElementById("back").setAttribute("href",back);
 var hint=document.getElementById("hint");
+var loadui=document.getElementById("loadui");
+var loadmsg=document.getElementById("loadmsg");
 function say(text){hint.hidden=!text;hint.textContent=text||"";}
+function status(text, isErr){
+  if(loadmsg)loadmsg.textContent=text||"";
+  if(loadui){
+    loadui.hidden=false;
+    if(isErr)loadui.classList.add("err");
+    else loadui.classList.remove("err");
+  }
+}
+function hideLoad(){if(loadui)loadui.hidden=true;}
 var okSrc=
   rom.indexOf("https://cors.archive.org/cors/")===0||
   rom.indexOf("blob:")===0||
   rom.indexOf("https://")===0||
   rom.indexOf("http://")===0;
-if(!rom||!okSrc){say("No hay un archivo o URL válida para cargar.");return;}
-if(rom.indexOf("blob:")===0){say("Cargando archivo local…");}
-else if(rom.indexOf("https://")===0&&rom.indexOf("cors.archive.org")===-1){say("Cargando URL… Si falla, el servidor debe permitir CORS.");}
+if(!rom||!okSrc){status("No hay un archivo o URL válida para cargar.",true);return;}
+if(!gameName){
+  try{
+    var path=rom.split("?")[0];
+    gameName=decodeURIComponent(path.split("/").pop()||"");
+  }catch(e){gameName="";}
+}
+if(!gameName||gameName.indexOf(".")<0){
+  if(rom.indexOf("blob:")===0)gameName="game.chd";
+}
+if(rom.indexOf("blob:")===0&&gameName){
+  rom=rom.split("#")[0]+"#/"+encodeURIComponent(gameName);
+}
+status(rom.indexOf("blob:")===0
+  ?("Archivo local: "+gameName+" — iniciando emulador…")
+  :("Descargando "+(gameName||"juego")+"… puede tardar varios minutos."));
 var pads={
 nes:{dpad:true,meta:[{label:"Select",index:2},{label:"Start",index:3}],faces:"nes",face:[{label:"B Turbo",index:0,turbo:true},{label:"A Turbo",index:8,turbo:true},{label:"B",index:0},{label:"A",index:8},{label:"A+B",indices:[0,8],combo:true}]},
 sms:{dpad:true,meta:[{label:"Pausa",index:3}],faces:"pair",face:[{label:"1",index:0,slot:"b"},{label:"2",index:8,slot:"a"}]},
@@ -105,14 +140,86 @@ playrow.appendChild(actions);deck.appendChild(playrow);
 var keys={ArrowUp:4,ArrowDown:5,ArrowLeft:6,ArrowRight:7,Enter:3,ShiftLeft:2,ShiftRight:2,KeyZ:8,KeyX:0,KeyA:1,KeyS:9,KeyQ:10,KeyE:11,KeyR:12,KeyF:13,Digit1:2,Digit2:3};
 window.addEventListener("keydown",function(event){if(event.repeat||!(event.code in keys))return;event.preventDefault();press(keys[event.code],true);});
 window.addEventListener("keyup",function(event){if(!(event.code in keys))return;press(keys[event.code],false);});
-window.EJS_player="#game";window.EJS_gameUrl=rom;window.EJS_core=core;window.EJS_pathtodata="https://cdn.emulatorjs.org/stable/data/";window.EJS_startOnLoaded=true;window.EJS_threads=false;window.EJS_volume=0.85;window.EJS_color="#f0a202";window.EJS_backgroundColor="#000000";window.EJS_disableDatabases=true;window.EJS_hideSettings=true;
+function startEJS(){
+window.EJS_player="#game";
+window.EJS_gameUrl=rom;
+window.EJS_core=core;
+if(gameName)window.EJS_gameName=gameName;
+window.EJS_pathtodata="https://cdn.emulatorjs.org/stable/data/";
+window.EJS_startOnLoaded=true;
+window.EJS_threads=false;
+window.EJS_volume=0.85;
+window.EJS_color="#f0a202";
+window.EJS_backgroundColor="#000000";
+window.EJS_disableDatabases=true;
+window.EJS_hideSettings=true;
 window.EJS_Buttons={playPause:false,restart:false,mute:false,settings:false,fullscreen:false,saveState:false,loadState:false,screenshot:false,cheat:false,volume:false,cacheManager:false,quickSave:false,quickLoad:false,saveSavFiles:false,contextMenu:false};
 var started=false;
-window.EJS_onGameStart=function(){started=true;say("");try{window.EJS_emulator.setVolume(0.85);}catch(e){}};
-if(core==="psx"){say("PS1: descargando el juego… puede tardar varios minutos.");}
-window.setTimeout(function(){if(started)return;if(core==="psx"){say("Si ves el menú de RetroArch y no el juego, este título no es compatible en el navegador. Usá Volver.");}else if(core==="mame"){say("Sigue cargando. Si no aparece el juego, este arcade no es compatible.");}else{say("Sigue cargando el emulador y el archivo…");}},core==="psx"?45000:12000);
-window.setTimeout(function(){if(started)return;if(core==="psx"){say("No se pudo iniciar el juego de PS1. Volvé al catálogo e intentá otro título (preferí los ISO).");}},90000);
-var script=document.createElement("script");script.src="https://cdn.emulatorjs.org/stable/data/loader.js";script.onerror=function(){say("No pude cargar el emulador.");};document.body.appendChild(script);
+window.EJS_ready=function(){status("Emulador listo. Cargando núcleo y juego…");};
+window.EJS_onGameStart=function(){
+  started=true;
+  hideLoad();
+  say("");
+  try{window.EJS_emulator.setVolume(0.85);}catch(e){}
+};
+window.setTimeout(function(){if(started)return;status("Sigue cargando… los .chd grandes pueden tardar varios minutos.");},12000);
+window.setTimeout(function(){if(started)return;status("Todavía trabajando. Si pasa de 3–5 min, el archivo puede ser incompatible o la URL no permite CORS.");},45000);
+window.setTimeout(function(){if(started)return;status(core==="psx"
+  ?"No arrancó el juego de PS1. Probá otro archivo (.iso/.pbp a veces andan mejor) o verificá que la URL permita CORS. Usá Volver."
+  :"No se pudo iniciar el juego. Usá Volver e intentá otro archivo.",true);},180000);
+var script=document.createElement("script");
+script.src="https://cdn.emulatorjs.org/stable/data/loader.js";
+script.onerror=function(){status("No pude cargar el emulador desde la CDN.",true);};
+document.body.appendChild(script);
+}
+
+function humanSize(n){
+  if(!n||!isFinite(n))return "";
+  if(n>1e9)return (n/1e9).toFixed(1)+" GB";
+  if(n>1e6)return Math.round(n/1e6)+" MB";
+  return Math.round(n/1e3)+" KB";
+}
+
+async function prepareRom(){
+  if(rom.indexOf("blob:")===0 || rom.indexOf("cors.archive.org")!==-1){
+    startEJS();
+    return;
+  }
+  status("Comprobando URL y descargando…");
+  try{
+    var res=await fetch(rom,{mode:"cors",credentials:"omit"});
+    if(!res.ok)throw new Error("HTTP "+res.status);
+    var total=Number(res.headers.get("Content-Length")||0);
+    var reader=res.body&&res.body.getReader?res.body.getReader():null;
+    var chunks=[];
+    var received=0;
+    if(reader){
+      while(true){
+        var step=await reader.read();
+        if(step.done)break;
+        chunks.push(step.value);
+        received+=step.value.length;
+        if(total>0)status("Descargando "+gameName+"… "+Math.min(100,Math.round(received*100/total))+"% ("+humanSize(received)+" / "+humanSize(total)+")");
+        else status("Descargando "+gameName+"… "+humanSize(received));
+      }
+      var blob=new Blob(chunks);
+    }else{
+      var blob=await res.blob();
+    }
+    if(!gameName||gameName.indexOf(".")<0){
+      var ct=res.headers.get("Content-Type")||"";
+      gameName=ct.indexOf("chd")>=0?"game.chd":"game.iso";
+    }
+    rom=URL.createObjectURL(blob);
+    if(gameName)rom=rom+"#/"+encodeURIComponent(gameName);
+    status("Descarga lista ("+humanSize(blob.size)+"). Iniciando emulador…");
+    startEJS();
+  }catch(err){
+    status("No pude descargar el archivo. La URL debe ser directa y permitir CORS (Access-Control-Allow-Origin). Error: "+(err&&err.message?err.message:err),true);
+  }
+}
+prepareRom();
+
 })();
 </script>
 </body></html>
