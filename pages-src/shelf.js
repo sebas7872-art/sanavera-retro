@@ -216,10 +216,13 @@ q.addEventListener("input", () => {
 
 function launchRom(url, opts = {}) {
   error.hidden = true;
+  const name = (opts && opts.name) || "";
   try {
     sessionStorage.setItem("sanavera.rom", url);
     sessionStorage.setItem("sanavera.core", system.core);
     sessionStorage.setItem("sanavera.sys", system.id);
+    if (name) sessionStorage.setItem("sanavera.name", name);
+    else sessionStorage.removeItem("sanavera.name");
   } catch (e) {
     /* ignore quota */
   }
@@ -232,6 +235,7 @@ function launchRom(url, opts = {}) {
   if (url.startsWith("http://") || url.startsWith("https://")) {
     next.set("url", url);
   }
+  if (name) next.set("name", name);
   location.href = `./player.html?${next}`;
 }
 
@@ -255,7 +259,7 @@ if (localFile) {
       }
     }
     const blobUrl = URL.createObjectURL(file);
-    launchRom(blobUrl);
+    launchRom(blobUrl, { name: file.name });
   });
 }
 
@@ -280,7 +284,8 @@ if (openUrlBtn && remoteUrl) {
       error.textContent = "Solo se admiten URLs http(s).";
       return;
     }
-    launchRom(parsed.href);
+    const pathName = decodeURIComponent(parsed.pathname.split("/").pop() || "game.chd");
+    launchRom(parsed.href, { name: pathName });
   });
   remoteUrl.addEventListener("keydown", (event) => {
     if (event.key === "Enter") {
