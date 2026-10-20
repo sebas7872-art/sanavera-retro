@@ -164,6 +164,16 @@ grid.addEventListener("click", async (event) => {
   error.hidden = true;
   try {
     const playable = await resolvePlayable(open.dataset.id, system);
+    if (system.id === "ps1" && playable.size && playable.size > 20_000_000) {
+      const mb = Math.round(playable.size / 1_000_000);
+      const ok = window.confirm(
+        `Este juego pesa unos ${mb} MB. En el celular puede tardar varios minutos en descargar. ¿Continuar?`,
+      );
+      if (!ok) {
+        open.disabled = false;
+        return;
+      }
+    }
     const back = `index.html?sys=${encodeURIComponent(system.id)}`;
     const next = new URLSearchParams({
       core: system.core,
