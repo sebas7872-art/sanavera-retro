@@ -131,7 +131,7 @@ export const SYSTEMS: SystemDef[] = [
     // Curated list only — query unused for searchShelf when id is ps1
     query: "collection:psx-homebrew-library AND mediatype:software",
     exts: [".iso", ".chd", ".pbp", ".bin", ".cue", ".img", ".zip"],
-    note: "Catálogo curado de homebrew/demos individuales. Preferí los ISO; algunos ZIP pueden tardar o no arrancar según el emulador.",
+    note: "Catálogo homebrew curado. También podés abrir un archivo local (.chd, .iso…) o una URL directa con tus propios juegos.",
   },
 ];
 
