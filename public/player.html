@@ -293,6 +293,24 @@
         font-family: Outfit, sans-serif;
         font-size: 0.78rem;
       }
+      .triggers {
+        display: flex;
+        width: 100%;
+        justify-content: space-between;
+        gap: 0.4rem;
+      }
+      .triggers button {
+        position: static;
+        width: auto;
+        height: auto;
+        min-width: 2.9rem;
+        min-height: 2.1rem;
+        padding: 0.15rem 0.55rem;
+        border-radius: 999px;
+        font-family: Outfit, sans-serif;
+        font-size: 0.72rem;
+        opacity: 0.92;
+      }
       @media (orientation: landscape) and (max-height: 520px) {
         #stage { flex-direction: row; }
         #screen { flex: 1 1 auto; min-height: 0; }
@@ -396,6 +414,28 @@
               { label: "A", index: 8, slot: "e" },
               { label: "B", index: 0, slot: "s" },
               { label: "Y", index: 1, slot: "w" },
+            ],
+          },
+          ps1: {
+            dpad: true,
+            meta: [
+              { label: "Select", index: 2 },
+              { label: "Start", index: 3 },
+            ],
+            faces: "diamond",
+            shoulders: [
+              { label: "L1", index: 10 },
+              { label: "R1", index: 11 },
+            ],
+            triggers: [
+              { label: "L2", index: 12 },
+              { label: "R2", index: 13 },
+            ],
+            face: [
+              { label: "\u25b3", index: 9, slot: "n" },
+              { label: "\u25cb", index: 8, slot: "e" },
+              { label: "\u2715", index: 0, slot: "s" },
+              { label: "\u25a1", index: 1, slot: "w" },
             ],
           },
           arcade: {
@@ -508,7 +548,7 @@
           var root = document.createElement("div");
           root.className = "stick";
           root.setAttribute("role", "application");
-          root.setAttribute("aria-label", "Movimiento. Apoyá el dedo y arrastrá.");
+          root.setAttribute("aria-label", "Movimiento. Apoya el dedo y arrastra.");
           var base = document.createElement("div");
           base.className = "stick-base";
           var knob = document.createElement("div");
@@ -624,6 +664,14 @@
         actions.className = "actions";
         var faces = document.createElement("div");
         faces.className = "faces " + layout.faces;
+        if (layout.triggers) {
+          var triggers = document.createElement("div");
+          triggers.className = "triggers";
+          layout.triggers.forEach(function (item) {
+            triggers.appendChild(makeButton(item));
+          });
+          actions.appendChild(triggers);
+        }
         if (layout.shoulders) {
           var shoulders = document.createElement("div");
           shoulders.className = "shoulders";
@@ -706,6 +754,8 @@
           KeyS: 9,
           KeyQ: 10,
           KeyE: 11,
+          KeyR: 12,
+          KeyF: 13,
           Digit1: 2,
           Digit2: 3,
         };
@@ -757,7 +807,9 @@
           if (started) return;
           say(core === "mame"
             ? "Sigue cargando. Si no aparece el juego, este arcade no es compatible."
-            : "Sigue cargando el emulador y el archivo…");
+            : core === "psx"
+              ? "PS1: descargando (puede tardar varios minutos en movil)..."
+              : "Sigue cargando el emulador y el archivo...");
         }, 12000);
 
         var script = document.createElement("script");
