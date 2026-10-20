@@ -31,14 +31,16 @@ function readFavs() {
 let favs = readFavs();
 
 function esc(value) {
-  const map = {
-    "&": "&",
-    "<": "<",
-    ">": ">",
-    '"': """,
-    "'": "&#39;"
-  };
-  return String(value).replace(/[&<>"']/g, (char) => map[char]);
+  return String(value).replace(/[&<>"']/g, (char) => {
+    switch (char) {
+      case "&": return "&";
+      case "<": return "<";
+      case ">": return ">";
+      case '"': return """;
+      case "'": return "&#39;";
+      default: return char;
+    }
+  });
 }
 
 function href(sys, fav) {
