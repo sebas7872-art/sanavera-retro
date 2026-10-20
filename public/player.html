@@ -199,6 +199,33 @@
         height: auto;
       }
       .faces.quad { grid-template-columns: repeat(2, var(--face)); }
+      .faces.nes {
+        --face: clamp(2.55rem, 12vw, 3.7rem);
+        display: grid;
+        grid-template-columns: repeat(2, var(--face));
+        gap: 0.32rem;
+        width: auto;
+        height: auto;
+        position: static;
+      }
+      .faces.nes button {
+        position: static;
+        display: grid;
+        place-items: center;
+        padding: 0.1rem;
+        line-height: 1.05;
+      }
+      .faces.nes button.combo {
+        grid-column: 1 / -1;
+        width: 100%;
+        height: auto;
+        min-height: calc(var(--face) * 0.72);
+        border-radius: 999px;
+        font-family: Outfit, ui-sans-serif, sans-serif;
+        font-size: 0.78rem;
+        font-weight: 600;
+        letter-spacing: 0.04em;
+      }
       .faces.grid {
         --face: clamp(2.2rem, 10.2vw, 3.05rem);
         grid-template-columns: repeat(3, var(--face));
@@ -319,12 +346,13 @@
               { label: "Select", index: 2 },
               { label: "Start", index: 3 },
             ],
-            faces: "quad",
+            faces: "nes",
             face: [
-              { label: "B", index: 0 },
-              { label: "A", index: 8 },
               { label: "B Turbo", index: 0, turbo: true },
               { label: "A Turbo", index: 8, turbo: true },
+              { label: "B", index: 0 },
+              { label: "A", index: 8 },
+              { label: "A+B", indices: [0, 8], combo: true },
             ],
           },
           sms: {
@@ -416,9 +444,13 @@
         function makeButton(item) {
           var button = document.createElement("button");
           button.type = "button";
-          button.dataset.pad = String(item.index);
+          var indices = item.indices
+            ? item.indices.slice()
+            : [item.index];
+          button.dataset.pad = indices.join(",");
           button.setAttribute("aria-label", item.label);
           if (item.slot) button.className = item.slot;
+          if (item.combo) button.classList.add("combo");
           if (item.turbo) {
             button.classList.add("turbo");
             var main = document.createElement("span");
@@ -434,6 +466,11 @@
           var timer = null;
           var held = false;
           var phase = false;
+          function pressAll(down) {
+            for (var i = 0; i < indices.length; i++) {
+              press(indices[i], down);
+            }
+          }
           function stop(event) {
             if (event) event.preventDefault();
             if (!held) return;
@@ -443,7 +480,7 @@
               clearInterval(timer);
               timer = null;
             }
-            press(Number(button.dataset.pad), false);
+            pressAll(false);
           }
           button.addEventListener("pointerdown", function (event) {
             event.preventDefault();
@@ -453,11 +490,11 @@
             button.classList.add("is-down");
             try { button.setPointerCapture(event.pointerId); } catch (e) {}
             if (navigator.vibrate) navigator.vibrate(8);
-            press(Number(button.dataset.pad), true);
+            pressAll(true);
             if (item.turbo) {
               timer = window.setInterval(function () {
                 phase = !phase;
-                press(Number(button.dataset.pad), phase);
+                pressAll(phase);
               }, 60);
             }
           });
@@ -625,28 +662,27 @@
           [2, 3, 4, 6].forEach(function (count) {
             var button = document.createElement("button");
             button.type = "button";
+            button.textContent = String(count);
             button.dataset.kind = "count";
             button.dataset.value = String(count);
-            button.textContent = String(count);
-            button.setAttribute("aria-label", count + " botones");
             button.addEventListener("click", function () {
-              saved.count = count;
-              applyArcade(saved);
+              applyArcade({ count: count, map: saved.map });
+              saved = readArcade();
             });
             config.appendChild(button);
           });
           var mapLabel = document.createElement("span");
           mapLabel.textContent = "Mapa";
           config.appendChild(mapLabel);
-          [{ id: "std", label: "Clásico" }, { id: "alt", label: "Alterno" }].forEach(function (item) {
+          ["std", "alt"].forEach(function (map) {
             var button = document.createElement("button");
             button.type = "button";
+            button.textContent = map === "std" ? "A" : "B";
             button.dataset.kind = "map";
-            button.dataset.value = item.id;
-            button.textContent = item.label;
+            button.dataset.value = map;
             button.addEventListener("click", function () {
-              saved.map = item.id;
-              applyArcade(saved);
+              applyArcade({ count: saved.count, map: map });
+              saved = readArcade();
             });
             config.appendChild(button);
           });
