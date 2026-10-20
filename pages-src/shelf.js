@@ -31,16 +31,12 @@ function readFavs() {
 let favs = readFavs();
 
 function esc(value) {
-  return String(value).replace(/[&<>"']/g, (char) => {
-    switch (char) {
-      case "&": return "&";
-      case "<": return "<";
-      case ">": return ">";
-      case String.fromCharCode(34): return """;
-      case "'": return "&#39;";
-      default: return char;
-    }
-  });
+  return String(value)
+    .replace(/&/g, "&" + "amp;")
+    .replace(/</g, "&" + "lt;")
+    .replace(/>/g, "&" + "gt;")
+    .replace(/"/g, "&" + "quot;")
+    .replace(/'/g, "&" + "#39;");
 }
 
 function href(sys, fav) {
