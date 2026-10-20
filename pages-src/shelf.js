@@ -13,6 +13,10 @@ const empty = document.querySelector("#empty");
 const grid = document.querySelector("#grid");
 const status = document.querySelector("#status");
 const moreBtn = document.querySelector("#more");
+const personal = document.querySelector("#personal");
+const localFile = document.querySelector("#localFile");
+const remoteUrl = document.querySelector("#remoteUrl");
+const openUrlBtn = document.querySelector("#openUrl");
 
 let page = 1;
 let more = false;
@@ -56,6 +60,11 @@ function renderTabs() {
   note.textContent = system.note || "";
   q.disabled = showingFavs;
   q.placeholder = showingFavs ? "Los guardados no se buscan" : `Buscar en ${system.label}`;
+  if (personal) {
+    const show = system.id === "ps1" && !showingFavs;
+    personal.hidden = !show;
+    personal.classList.toggle("show", show);
+  }
 }
 
 function star(on) {
@@ -204,6 +213,82 @@ q.addEventListener("input", () => {
     load(true);
   }, 280);
 });
+
+function launchRom(url, opts = {}) {
+  error.hidden = true;
+  try {
+    sessionStorage.setItem("sanavera.rom", url);
+    sessionStorage.setItem("sanavera.core", system.core);
+    sessionStorage.setItem("sanavera.sys", system.id);
+  } catch (e) {
+    /* ignore quota */
+  }
+  const back = `index.html?sys=${encodeURIComponent(system.id)}`;
+  const next = new URLSearchParams({
+    core: system.core,
+    sys: system.id,
+    back,
+  });
+  if (url.startsWith("http://") || url.startsWith("https://")) {
+    next.set("url", url);
+  }
+  location.href = `./player.html?${next}`;
+}
+
+if (localFile) {
+  localFile.addEventListener("change", () => {
+    const file = localFile.files && localFile.files[0];
+    if (!file) return;
+    const lower = file.name.toLowerCase();
+    const ok = [".chd", ".pbp", ".iso", ".bin", ".cue", ".img", ".zip", ".exe"].some((ext) => lower.endsWith(ext));
+    if (!ok) {
+      error.hidden = false;
+      error.textContent = "Formato no admitido. Usá .chd, .pbp, .iso, .bin, .cue, .img, .zip o .exe.";
+      localFile.value = "";
+      return;
+    }
+    if (file.size > 700_000_000) {
+      const okBig = window.confirm(`El archivo pesa unos ${Math.round(file.size / 1_000_000)} MB. Puede fallar en el celular. ¿Continuar?`);
+      if (!okBig) {
+        localFile.value = "";
+        return;
+      }
+    }
+    const blobUrl = URL.createObjectURL(file);
+    launchRom(blobUrl);
+  });
+}
+
+if (openUrlBtn && remoteUrl) {
+  openUrlBtn.addEventListener("click", () => {
+    const raw = (remoteUrl.value || "").trim();
+    if (!raw) {
+      error.hidden = false;
+      error.textContent = "Pegá una URL directa al archivo (.chd, .iso, etc.).";
+      return;
+    }
+    let parsed;
+    try {
+      parsed = new URL(raw);
+    } catch {
+      error.hidden = false;
+      error.textContent = "La URL no es válida.";
+      return;
+    }
+    if (parsed.protocol !== "https:" && parsed.protocol !== "http:") {
+      error.hidden = false;
+      error.textContent = "Solo se admiten URLs http(s).";
+      return;
+    }
+    launchRom(parsed.href);
+  });
+  remoteUrl.addEventListener("keydown", (event) => {
+    if (event.key === "Enter") {
+      event.preventDefault();
+      openUrlBtn.click();
+    }
+  });
+}
 
 renderTabs();
 load(true);
