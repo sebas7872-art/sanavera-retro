@@ -1,7 +1,7 @@
 import { copyFileSync, mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 
-const root = "/workspace";
+const root = process.cwd();
 const out = join(root, "pages-dist");
 mkdirSync(out, { recursive: true });
 
